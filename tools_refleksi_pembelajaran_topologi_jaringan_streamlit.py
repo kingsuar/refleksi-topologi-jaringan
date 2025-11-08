@@ -139,5 +139,17 @@ if st.button("💾 Simpan & Lihat Hasil"):
             df.to_csv("hasil_refleksi.csv", index=False)
 
         st.info("💾 Jawaban dan saran Anda telah disimpan!")
+import pandas as pd
+
+# setelah data disimpan ke file CSV
+df = pd.read_csv("data_refleksi.csv")
+
+st.download_button(
+    label="📥 Unduh Hasil Refleksi (CSV)",
+    data=df.to_csv(index=False).encode('utf-8'),
+    file_name="data_refleksi.csv",
+    mime="text/csv"
+)
+
 
 
