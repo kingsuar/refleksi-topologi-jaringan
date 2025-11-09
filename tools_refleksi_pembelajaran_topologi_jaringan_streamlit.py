@@ -1,28 +1,31 @@
 import streamlit as st
 import pandas as pd
+import csv
 import os
 
+# --- Pengaturan halaman ---
 st.set_page_config(page_title="Refleksi Pembelajaran Topologi Jaringan", layout="wide")
 
-st.title("🧠 Refleksi & Kuis Pembelajaran Topologi Jaringan")
+st.title("🧠 Refleksi Pembelajaran Topologi Jaringan")
+st.markdown("Silakan isi identitas, jawab pertanyaan, dan berikan saran pembelajaran di bawah ini 👇")
 
-st.markdown("""
-Selamat datang di **alat refleksi pembelajaran topologi jaringan**.  
-Silakan isi data diri, jawab 5 pertanyaan pilihan ganda,  
-dan berikan saran pembelajaran di bagian akhir.
-""")
-
+# ==========================
 # Bagian Identitas
+# ==========================
 st.subheader("🪪 Identitas Siswa")
 col1, col2, col3 = st.columns(3)
 with col1:
     nama = st.text_input("Nama Lengkap")
 with col2:
-    kelas = st.text_input("Kelas (misal: XI A,B,C)")
+    kelas = st.text_input("Kelas (contoh: XI TKJ 1)")
 with col3:
-    absen = st.text_input("No. Absen")
+    absen = st.text_input("Nomor Absen")
 
-# Daftar pertanyaan kuis
+# ==========================
+# Bagian Pertanyaan Refleksi
+# ==========================
+st.subheader("📘 Pertanyaan Refleksi dan Kuis")
+
 questions = [
     {
         "q": "1️⃣ Apa pengertian dari topologi jaringan?",
@@ -36,22 +39,12 @@ questions = [
     },
     {
         "q": "2️⃣ Topologi jaringan yang setiap komputer terhubung ke satu komputer pusat disebut?",
-        "options": [
-            "A. Topologi ring",
-            "B. Topologi bus",
-            "C. Topologi star",
-            "D. Topologi mesh"
-        ],
+        "options": ["A. Topologi ring", "B. Topologi bus", "C. Topologi star", "D. Topologi mesh"],
         "answer": "C. Topologi star"
     },
     {
         "q": "3️⃣ Topologi yang menggunakan satu jalur utama disebut?",
-        "options": [
-            "A. Star",
-            "B. Bus",
-            "C. Ring",
-            "D. Mesh"
-        ],
+        "options": ["A. Star", "B. Bus", "C. Ring", "D. Mesh"],
         "answer": "B. Bus"
     },
     {
@@ -76,80 +69,93 @@ questions = [
     }
 ]
 
-# Menyimpan skor
-score = 0
 user_answers = []
+score = 0
 
-# Menampilkan pertanyaan kuis
-st.subheader("📘 Kuis Pemahaman")
 for i, q in enumerate(questions):
-    user_answer = st.radio(q["q"], q["options"], key=f"q{i}")
-    user_answers.append(user_answer)
-    if user_answer == q["answer"]:
-        score += 20  # Nilai 20 poin per soal
+    answer = st.radio(q["q"], q["options"], key=f"q{i}")
+    user_answers.append(answer)
+    if answer == q["answer"]:
+        score += 20  # total 5 pertanyaan × 20 = 100
 
-# Tambahkan bagian refleksi/saran
+# ==========================
+# Bagian Refleksi / Saran
+# ==========================
 st.markdown("---")
-st.subheader("💬 Refleksi & Saran Pembelajaran Hari Ini")
+st.subheader("💬 Saran Pembelajaran Hari Ini")
 feedback = st.text_area(
-    "Tulis saran, kesan, atau masukan Anda terhadap pembelajaran hari ini:",
-    placeholder="Contoh: Saya senang belajar topologi jaringan, tapi ingin lebih banyak praktik langsung...",
+    "Tuliskan saran atau masukan kamu terhadap pembelajaran hari ini:",
+    placeholder="Contoh: Pembelajarannya menarik, tapi saya ingin lebih banyak praktik...",
     height=150
 )
 
-# Tombol Simpan
-if st.button("💾 Simpan & Lihat Hasil"):
-    # Validasi identitas
+# ==========================
+# Simpan ke file CSV
+# ==========================
+csv_path = "data_refleksi.csv"
+
+if st.button("💾 Simpan Jawaban"):
     if not nama or not kelas or not absen:
-        st.warning("⚠️ Harap isi nama, kelas, dan nomor absen terlebih dahulu.")
+        st.warning("⚠️ Harap isi nama, kelas, dan nomor absen sebelum menyimpan.")
     else:
-        # Menampilkan hasil kuis
-        st.success(f"🎯 Nilai Anda: {score} / 100")
-        if score == 100:
-            st.balloons()
-            st.info("Keren! Kamu menguasai topologi jaringan 🎉")
-        elif score >= 60:
-            st.warning("Cukup baik, tapi masih bisa lebih memahami konsep topologi!")
-        else:
-            st.error("Perlu belajar lagi ya. Coba pelajari kembali konsep dasarnya.")
+        header = ["Nama", "Kelas", "Absen", "Jawaban", "Nilai", "Saran"]
+        data = [nama, kelas, absen, str(user_answers), score, feedback]
 
-        # Menampilkan saran audiens
-        if feedback.strip() != "":
+        file_exists = os.path.exists(csv_path)
+        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists or os.stat(csv_path).st_size == 0:  # jika file kosong/tidak ada
+                writer.writerow(header)
+            writer.writerow(data)
+
+        st.success(f"✅ Jawaban kamu sudah disimpan! Nilai kamu: **{score} / 100**")
+
+# ==========================
+# Menampilkan data hasil refleksi & peringkat
+# ==========================
+st.markdown("---")
+st.subheader("📊 Hasil Refleksi Keseluruhan")
+
+if os.path.exists(csv_path) and os.stat(csv_path).st_size > 0:
+    try:
+        df = pd.read_csv(csv_path)
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+
+            st.download_button(
+                label="📥 Unduh Semua Jawaban (CSV)",
+                data=df.to_csv(index=False).encode('utf-8-sig'),
+                file_name="data_refleksi.csv",
+                mime="text/csv"
+            )
+
+            # ==========================
+            # 🎯 Peringkat Responden
+            # ==========================
             st.markdown("---")
-            st.subheader("📢 Terima kasih atas sarannya!")
-            st.write(f"📝 \"{feedback}\"")
+            st.subheader("🏆 Peringkat Responden Berdasarkan Nilai")
+
+            if "Nilai" in df.columns:
+                df["Nilai"] = pd.to_numeric(df["Nilai"], errors="coerce").fillna(0)
+                ranking = df.sort_values(by="Nilai", ascending=False)
+                ranking["Peringkat"] = range(1, len(ranking) + 1)
+                tampil = ranking[["Peringkat", "Nama", "Kelas", "Absen", "Nilai"]]
+                st.dataframe(tampil, use_container_width=True)
+
+                top3 = tampil.head(3)
+                st.markdown("### 🥇 Peringkat 3 Teratas:")
+                for i, row in top3.iterrows():
+                    if row["Peringkat"] == 1:
+                        st.success(f"🥇 {row['Nama']} — {row['Kelas']} (Nilai: {row['Nilai']})")
+                    elif row["Peringkat"] == 2:
+                        st.info(f"🥈 {row['Nama']} — {row['Kelas']} (Nilai: {row['Nilai']})")
+                    elif row["Peringkat"] == 3:
+                        st.warning(f"🥉 {row['Nama']} — {row['Kelas']} (Nilai: {row['Nilai']})")
+            else:
+                st.info("⚠️ Kolom 'Nilai' belum ditemukan di file data. Jawaban baru akan otomatis menambahkan kolom ini.")
         else:
-            st.warning("Kamu belum menuliskan saran atau masukan.")
-
-        # Simpan ke file CSV
-        data = {
-            "Nama": [nama],
-            "Kelas": [kelas],
-            "Absen": [absen],
-            "Jawaban": [user_answers],
-            "Nilai": [score],
-            "Saran": [feedback]
-        }
-
-        df = pd.DataFrame(data)
-
-        if os.path.exists("hasil_refleksi.csv"):
-            df.to_csv("hasil_refleksi.csv", mode='a', header=False, index=False)
-        else:
-            df.to_csv("hasil_refleksi.csv", index=False)
-
-        st.info("💾 Jawaban dan saran Anda telah disimpan!")
-import pandas as pd
-
-# setelah data disimpan ke file CSV
-df = pd.read_csv("data_refleksi.csv")
-
-st.download_button(
-    label="📥 Unduh Hasil Refleksi (CSV)",
-    data=df.to_csv(index=False).encode('utf-8'),
-    file_name="data_refleksi.csv",
-    mime="text/csv"
-)
-
-
-
+            st.info("ℹ️ Belum ada data refleksi yang tersimpan.")
+    except pd.errors.EmptyDataError:
+        st.info("ℹ️ Belum ada data refleksi yang tersimpan.")
+else:
+    st.info("ℹ️ Belum ada data refleksi yang tersimpan.")
